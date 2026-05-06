@@ -12,14 +12,17 @@ class UltimateTicTacToeEngine:
         # 下一手必須下的 box index，None 表示自由落子
         self.active_box: Optional[int] = None 
 
+        self.mapping = {0: '.', 1: 'X', 2: 'O'}
+
     def __str__(self):
         """簡單的視覺化，方便測試"""
         res = f"Active Box: {self.active_box}\n"
-        res += "-" * 15 + "\n"
+        res += "-" * 19 + "\n"
         for b in range(0, 9, 3):
             for r in range(3):
-                res += " | ".join(["".join(str(self.board[b+i][r][c]) for c in range(3)) for i in range(3)]) + "\n"
-            res += "-" * 15 + "\n"
+                res += "| "
+                res += " | ".join(["".join(str(self.mapping[self.board[b+i][r][c]]) for c in range(3)) for i in range(3)]) + " |\n"
+            res += "-" * 19 + "\n"
         return res
 
     def check_line_win(self, grid: List[List[int]]) -> int:
@@ -32,6 +35,25 @@ class UltimateTicTacToeEngine:
         if grid[0][0] != 0 and grid[0][0] == grid[1][1] == grid[2][2]: return grid[0][0]
         if grid[0][2] != 0 and grid[0][2] == grid[1][1] == grid[2][0]: return grid[0][2]
         return 0
+    
+    def check_game_over(self) -> int:
+        """檢查整個遊戲是否結束，回傳 0: ongoing, 1: P1 wins, 2: P2 wins, 3: draw"""
+        
+        # 1. 把 big_board (1D list) 轉換成 3x3 的 2D list
+        # self.big_board: [b0, b1, b2, b3, b4, b5, b6, b7, b8]
+        big_board_2d = [self.big_board[i:i+3] for i in range(0, 9, 3)]
+        
+        # 2. 檢查大盤是否有連線獲勝
+        winner = self.check_line_win(big_board_2d)
+        if winner != 0:
+            return winner # 1 或 2
+        
+        # 3. 檢查是否平手 (所有 big_board 的格子都已分出勝負(1或2)或填滿，且沒人連線)
+        # 注意：如果 big_board 還有 0，代表遊戲還沒結束
+        if all(status != 0 for status in self.big_board):
+            return 3 # 平手
+        
+        return 0 # 遊戲繼續
 
     def get_legal_moves(self) -> List[Tuple[int, int, int]]:
         """回傳所有合法的 (box, row, col)"""
