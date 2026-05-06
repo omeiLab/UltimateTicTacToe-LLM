@@ -6,9 +6,6 @@ class LLMAgent:
         self.model = model_name
 
     def build_prompt(self, engine_state_str: str, legal_moves: list):
-        """
-        Phase 2: 建立 Prompt，這就是所謂的 Input Representation
-        """
         # 這裡加入一點點 System Prompt 給模型定錨
         return f"""
         You are a professional Ultimate Tic-Tac-Toe player. Your goal is to win the game.
