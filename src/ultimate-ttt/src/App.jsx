@@ -7,6 +7,7 @@ export default function App() {
   const [state, setState] = useState(null);
   const [loading, setLoading] = useState(false);
   const [aiInfo, setAiInfo] = useState(null); // 儲存 AI 的最新動作與理由
+  const [mode, setMode] = useState("easy");    // 追蹤當前的難度模式 ("easy" 或 "medium")
 
   // -----------------------
   // 獲取後端最新狀態
@@ -22,6 +23,22 @@ export default function App() {
   }, []);
 
   // -----------------------
+  // 切換遊戲難度 (對接後端 /set-mode)
+  // -----------------------
+  const handleModeChange = async (selectedMode) => {
+    setMode(selectedMode);
+    try {
+      await fetch(`${API}/set-mode`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: selectedMode })
+      });
+    } catch (err) {
+      console.error("Failed to change mode:", err);
+    }
+  };
+
+  // -----------------------
   // 玩家落子與連鎖 AI 邏輯
   // -----------------------
   const handleClick = async (b, r, c) => {
@@ -33,7 +50,7 @@ export default function App() {
 
     setLoading(true);
 
-    // 樂觀 UI 更新：讓玩家點擊後立刻看到 ❌
+    // 樂觀 UI 更新：讓玩家點擊後立刻在畫面上看到 ❌
     setState(prev => {
       const newState = structuredClone(prev);
       newState.board[b][r][c] = 1;
@@ -71,7 +88,7 @@ export default function App() {
   const reset = async () => {
     setLoading(true);
     await fetch(`${API}/reset`, { method: "POST" });
-    setAiInfo(null); // 功能 2：徹底清空上一步的藍格標記與 Reasoning Box
+    setAiInfo(null); // 徹底清空上一步的藍格標記與 Reasoning Box
     await fetchState();
     setLoading(false);
   };
@@ -82,9 +99,27 @@ export default function App() {
     <div className="container">
       <h1>Ultimate Tic Tac Toe</h1>
 
-      <button onClick={reset} className="reset">
-        Reset
-      </button>
+      {/* 控制面板：包含重置與難度切換 */}
+      <div className="control-panel">
+        <button onClick={reset} className="reset">
+          Reset
+        </button>
+        
+        <div className="mode-selector">
+          <button 
+            className={`mode-btn ${mode === "easy" ? "active-mode" : ""}`}
+            onClick={() => handleModeChange("easy")}
+          >
+            Easy (Pure LLM)
+          </button>
+          <button 
+            className={`mode-btn ${mode === "medium" ? "active-mode" : ""}`}
+            onClick={() => handleModeChange("medium")}
+          >
+            Medium (Depth-2 Minimax)
+          </button>
+        </div>
+      </div>
 
       {loading && <p className="thinking-text">AI thinking...</p>}
 
@@ -100,7 +135,7 @@ export default function App() {
                 ${isActive && bigBoardStatus === 0 ? "active" : ""} 
                 ${bigBoardStatus !== 0 ? "completed" : ""}`}
             >
-              {/* 功能 1 修正：將壓暗遮罩層與高亮大符號拆開，防止大符號繼承透明度而變淡 */}
+              {/* 大格連線優化：將壓暗遮罩層與高亮大符號拆開，防止大符號變淡 */}
               {bigBoardStatus !== 0 && (
                 <>
                   <div className="board-grid-mask"></div>
