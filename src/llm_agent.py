@@ -2,7 +2,7 @@ import ollama
 import json
 
 class LLMAgent:
-    def __init__(self, model_name="llama3"):
+    def __init__(self, model_name="qwen2.5:7b"):
         self.model = model_name
 
     def build_prompt(self, engine_state_str: str, legal_moves: list):
@@ -37,7 +37,7 @@ class LLMAgent:
         """呼叫 Ollama"""
         response = ollama.chat(model=self.model, messages=[
             {'role': 'user', 'content': prompt}
-        ])
+        ], options={"temperature": 0.3})
         
         # 簡單的 JSON 解析，防呆
         try:
@@ -45,5 +45,8 @@ class LLMAgent:
             # 萬一模型吐出 Markdown (```json ... ```)，這裡要處理一下
             clean_content = content.replace("```json", "").replace("```", "").strip()
             return json.loads(clean_content)
-        except:
-            return {"error": "Invalid format", "raw": response['message']['content']}   
+        except Exception as e:
+            return {
+                "box": -1, "row": -1, "col": -1, 
+                "reason": f"JSON Decode Failed. Raw output: {content[:30]}..."
+            }

@@ -76,3 +76,64 @@ body {
   max-width: 600px;
   text-align: center;
 }
+
+/* 讓小盤具備相對定位 */
+.small-board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 10px;
+  border: 2px solid #444;
+  background-color: #1a1a1a;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+/* 移除原本讓整顆小盤變淡的 opacity */
+.small-board.completed {
+  border-color: #222;
+}
+
+/* 🔥 新增：只讓底部的格子與既有棋子變淡的半透明黑遮罩 */
+.board-grid-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(18, 18, 18, 0.75); /* 用深色半透明底把後面的格子「壓暗」 */
+  border-radius: 6px;
+  z-index: 5; /* 夾在格子（預設0）與大符號（10）的中間 */
+  pointer-events: none;
+}
+
+/* 🔥 修正：大格連線時的巨大 O 或 X (此時它不會變淡，會超級亮！) */
+.big-board-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 5.5rem; /* 放大一點更有張力 */
+  font-weight: bold;
+  color: #ffffff;    /* 純白高亮 */
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.6); /* 給大符號加一點霓虹發光感，更帥 */
+  z-index: 10;       /* 確保大符號站在最高點 */
+  pointer-events: none;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* AI 思考文字顏色調整，免得在暗黑模式看不清 */
+.thinking-text {
+  color: #3b82f6;
+  font-weight: bold;
+}

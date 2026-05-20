@@ -5,6 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from engine import UltimateTicTacToeEngine
 from llm_agent import LLMAgent
 
+import logging
+
+logger = logging.getLogger("uvicorn.error")
+
 app = FastAPI()
 
 # 🔥 讓 React 可以連（很重要）
@@ -41,13 +45,24 @@ def get_state():
     }
 
 def run_ai_turn():
-    # 這是你原本 /ai-move 的邏輯
     state_str = engine.to_llm_string()
     legal = engine.get_legal_moves()
     prompt = agent.build_prompt(state_str, legal)
     action = agent.get_move(prompt)
-    if "box" in action:
-        engine.make_move(action["box"], action["row"], action["col"], player=2)
+    
+    ai_choice = (action.get("box"), action.get("row"), action.get("col"))
+    
+    if ai_choice not in legal:
+        # 違規！強制沒收，指派第一個合法步數當保底
+        fallback_move = legal[0]
+        
+        # 把 reason 改寫，讓前端 React 知道這是被後端 Engine 糾正過的
+        action["box"] = fallback_move[0]
+        action["row"] = fallback_move[1]
+        action["col"] = fallback_move[2]
+        action["reason"] = f"[Engine Corrected] AI wanted {ai_choice} ({action.get('reason')}), but it was ILLEGAL. Forced fallback to {fallback_move}."
+    
+    engine.make_move(action["box"], action["row"], action["col"], player=2)
     return action
 
 # -----------------------

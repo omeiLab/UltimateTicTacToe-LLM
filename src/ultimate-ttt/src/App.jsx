@@ -6,10 +6,10 @@ const API = "http://127.0.0.1:8000";
 export default function App() {
   const [state, setState] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [aiInfo, setAiInfo] = useState(null);
+  const [aiInfo, setAiInfo] = useState(null); // 儲存 AI 的最新動作與理由
 
   // -----------------------
-  // fetch state
+  // 獲取後端最新狀態
   // -----------------------
   const fetchState = async () => {
     const res = await fetch(`${API}/state`);
@@ -22,17 +22,18 @@ export default function App() {
   }, []);
 
   // -----------------------
-  // player move (stable version)
+  // 玩家落子與連鎖 AI 邏輯
   // -----------------------
   const handleClick = async (b, r, c) => {
     if (loading) return;
-
-    // ❌ 防止 null crash
     if (!state) return;
+
+    // 如果這個大格已經分出勝負，則該區塊鎖死不可點擊
+    if (state.big_board[b] !== 0) return;
 
     setLoading(true);
 
-    // 1. optimistic UI（玩家立即看到）
+    // 樂觀 UI 更新：讓玩家點擊後立刻看到 ❌
     setState(prev => {
       const newState = structuredClone(prev);
       newState.board[b][r][c] = 1;
@@ -40,7 +41,6 @@ export default function App() {
     });
 
     try {
-      // 2. send move + let backend handle AI
       const res = await fetch(`${API}/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -48,35 +48,35 @@ export default function App() {
       });
 
       const data = await res.json();
-
-      // 3. replace with authoritative state (包含 AI move)
       setState(data.state);
+      
+      // 更新 AI 思考資訊
       if (data.ai_info) {
-        setAiInfo(data.ai_info); // 儲存 AI 的動作與理由
+        setAiInfo(data.ai_info); 
+      } else {
+        setAiInfo(null);
       }
 
     } catch (err) {
       console.error("Move failed:", err);
-      fetchState(); // fallback
+      fetchState(); // 失敗時拉回後端權威狀態
     } finally {
       setLoading(false);
     }
   };
 
   // -----------------------
-  // reset
+  // 重置遊戲（彻底清除所有狀態）
   // -----------------------
   const reset = async () => {
     setLoading(true);
     await fetch(`${API}/reset`, { method: "POST" });
+    setAiInfo(null); // 功能 2：徹底清空上一步的藍格標記與 Reasoning Box
     await fetchState();
     setLoading(false);
   };
 
-  // -----------------------
-  // loading guard
-  // -----------------------
-  if (!state) return <div>Loading...</div>;
+  if (!state) return <div className="loading">Loading...</div>;
 
   return (
     <div className="container">
@@ -86,36 +86,46 @@ export default function App() {
         Reset
       </button>
 
-      {loading && <p>AI thinking...</p>}
-
-      {aiInfo && (
-        <div className="ai-reason-box">
-          <h3>AI's Reasoning</h3>
-          <p>{aiInfo.reason}</p>
-        </div>
-      )}
+      {loading && <p className="thinking-text">AI thinking...</p>}
 
       <div className="big-board">
         {state.board.map((small, b) => {
-          const isActive =
-            state.active_box === null || state.active_box === b;
+          const isActive = state.active_box === null || state.active_box === b;
+          const bigBoardStatus = state.big_board[b]; // 0: 未分勝負, 1: 玩家贏, 2: AI 贏
 
           return (
             <div
               key={b}
-              className={`small-board ${isActive ? "active" : ""}`}
+              className={`small-board 
+                ${isActive && bigBoardStatus === 0 ? "active" : ""} 
+                ${bigBoardStatus !== 0 ? "completed" : ""}`}
             >
+              {/* 功能 1 修正：將壓暗遮罩層與高亮大符號拆開，防止大符號繼承透明度而變淡 */}
+              {bigBoardStatus !== 0 && (
+                <>
+                  <div className="board-grid-mask"></div>
+                  <div className="big-board-overlay">
+                    {bigBoardStatus === 1 ? "❌" : "⭕"}
+                  </div>
+                </>
+              )}
+
               {small.map((row, r) =>
                 row.map((cell, c) => {
                   const legal = state.legal_moves?.some(
                     (m) => m[0] === b && m[1] === r && m[2] === c
                   );
+
+                  // 判斷這一格是否為 AI 的最新落子
                   const isAiMove = aiInfo && aiInfo.box === b && aiInfo.row === r && aiInfo.col === c;
+
                   return (
                     <div
                       key={`${r}-${c}`}
-                      className={`cell ${legal ? "legal" : ""} ${isAiMove ? "ai-cell" : ""}`}
-                      onClick={() => handleClick(b, r, c)}
+                      className={`cell 
+                        ${legal && bigBoardStatus === 0 ? "legal" : ""} 
+                        ${isAiMove ? "ai-cell" : ""}`}
+                      onClick={() => bigBoardStatus === 0 && handleClick(b, r, c)}
                     >
                       {cell === 1 ? "❌" : cell === 2 ? "⭕" : ""}
                     </div>
@@ -126,6 +136,14 @@ export default function App() {
           );
         })}
       </div>
+
+      {/* AI 思考軌跡展示區 */}
+      {aiInfo && (
+        <div className="ai-reason-box">
+          <h3>AI's Reasoning:</h3>
+          <p>{aiInfo.reason}</p>
+        </div>
+      )}
     </div>
   );
 }
