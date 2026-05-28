@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 from engine import UltimateTicTacToeEngine
+from phi_evaluator import PhiEvaluator
 
 # 💡 從你拆開的兩個獨立檔案精準引入對應的 Agent 
 from easy_agent import EasyAgent
@@ -25,11 +26,15 @@ app.add_middleware(
 
 engine = UltimateTicTacToeEngine()
 
+# Phi evauluator for medium & hard
+phi_evaluator = PhiEvaluator(model="phi4-mini")
+
 # 💡 建立大腦策略工廠字典，預設統一使用 qwen2.5:7b
 agents = {
     "easy": EasyAgent(model_name="qwen2.5:7b"),
-    "medium": MediumAgent(model_name="qwen2.5:7b")
+    "medium": MediumAgent(model_name="qwen2.5:7b", phi_evaluator=phi_evaluator),
 }
+
 # 全域難度狀態，預設為 easy 流派
 current_mode = "easy"
 

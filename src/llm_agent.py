@@ -5,8 +5,9 @@ import sys
 import ollama
 
 class BaseAgent(ABC):
-    def __init__(self, model_name="qwen2.5:7b"):
+    def __init__(self, model_name="qwen2.5:7b", phi_evaluator=None):
         self.model = model_name
+        self.phi = phi_evaluator
 
     def _call_llm_and_parse_json(self, prompt: str) -> dict:
         """

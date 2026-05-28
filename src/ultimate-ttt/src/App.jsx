@@ -140,7 +140,7 @@ export default function App() {
                 <>
                   <div className="board-grid-mask"></div>
                   <div className="big-board-overlay">
-                    {bigBoardStatus === 1 ? "❌" : "⭕"}
+                    {bigBoardStatus === 1 ? "❌" : bigBoardStatus === 2 ? "⭕" : "🤝"}
                   </div>
                 </>
               )}

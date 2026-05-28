@@ -1,5 +1,6 @@
 import copy
 from llm_agent import BaseAgent
+from tactical_engine import simulate_best_reply, fallback_move, tactical_score
 
 class MediumAgent(BaseAgent):
     """
@@ -42,73 +43,67 @@ Do not include any other text outside the JSON object.
         """
         state_str = engine.to_llm_string()
         prompt = self.build_prompt(state_str, legal_moves)
+
         result = self._call_llm_and_parse_json(prompt)
         candidates = result.get("candidates", [])
 
-        # Take the top 3 candidates, but if JSON parsing failed or no candidates, fallback to the first 3 legal moves with a note
+        # fallback if LLM failed
         if "error" in result or not candidates:
-            candidates = [{"box": m[0], "row": m[1], "col": m[2], "reason": "Fallback"} for m in legal_moves[:3]]
+            return fallback_move(legal_moves)
 
         best_action = None
         best_score = -99999
 
-        # Depth-2 Minimax
         for cand in candidates:
             try:
-                b, r, c = int(cand["box"]), int(cand["row"]), int(cand["col"])
+                b = int(cand["box"])
+                r = int(cand["row"])
+                c = int(cand["col"])
             except (KeyError, ValueError, TypeError):
                 continue
-                
-            # Filter out any candidate that is not in legal moves (just in case)
+
+            # skip hallucinated illegal moves
             if (b, r, c) not in legal_moves:
                 continue
-                
-            # Layer 1: Simulate AI's candidate move on a virtual board
+
+            # -------------------------------------------------
+            # simulate my move
+            # -------------------------------------------------
             virtual_engine = copy.deepcopy(engine)
             virtual_engine.make_move(b, r, c, player=2)
-            
-            # Layer 2: Simulate opponent's best response (assuming opponent also plays optimally)
-            human_legal_replies = virtual_engine.get_legal_moves()
-            max_human_damage = 0
-            
-            for hb, hr, hc in human_legal_replies:
-                damage = 0
-                sim_sub_board = copy.deepcopy(virtual_engine.board[hb])
-                sim_sub_board[hr][hc] = 1
-                
-                # Simple heuristic for opponent's damage: 
-                # if this move wins them the sub-board it's a big threat (100 points).
-                if virtual_engine.check_line_win(sim_sub_board) == 1:
-                    damage += 100
-                    
-                if damage > max_human_damage:
-                    max_human_damage = damage
 
-            # Calculate AI's gain from the candidate move: 
-            # if it wins a sub-board, it's a big gain (80 points).
-            my_gain = 0
-            sim_my_board = copy.deepcopy(engine.board[b])
-            sim_my_board[r][c] = 2 # 模擬自己點下去
-            if engine.check_line_win(sim_my_board) == 2:
-                my_gain += 80
+            # -------------------------------------------------
+            # deterministic opponent simulation
+            # -------------------------------------------------
+            opponent_move, opponent_damage = simulate_best_reply(
+                virtual_engine,
+                opponent_player=1
+            )
 
-            # Final score for this candidate = AI's gain - Opponent's best damage
-            total_score = my_gain - max_human_damage
-            
+            # -------------------------------------------------
+            # tactical self gain
+            # (temporary heuristic before Phi evaluator)
+            # -------------------------------------------------
+            phi_score = self.phi.evaluate(virtual_engine) if self.phi else 0
+            determinstic_score = tactical_score(engine, b, r, c, player=2)
+            my_gain = phi_score + determinstic_score * 1.2
+
+            # -------------------------------------------------
+            # final score
+            # -------------------------------------------------
+            total_score = my_gain - opponent_damage
             if total_score > best_score:
                 best_score = total_score
                 best_action = {
-                    "box": b, "row": r, "col": c,
-                    "reason": f"{cand.get('reason','')} (Medium Sim: Gain +{my_gain}, Expected Enemy Damage -{max_human_damage})"
+                    "box": b,
+                    "row": r,
+                    "col": c,
+                    "reason": (
+                        f"{cand.get('reason', '')} "
+                        f"(Medium Eval: {my_gain} / "
+                        f"Enemy Threat: -{opponent_damage})"
+                    )
                 }
 
-        # Final decision
-        if best_action:
-            return best_action
-        else:
-            # Fallback
-            fallback = legal_moves[0]
-            return {
-                "box": fallback[0], "row": fallback[1], "col": fallback[2], 
-                "reason": "[Medium Fallback] Checked all candidates, none selected."
-            }
+        # final fallback
+        return best_action or fallback_move(legal_moves)

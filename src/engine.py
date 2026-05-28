@@ -79,6 +79,8 @@ class UltimateTicTacToeEngine:
         winner = self.check_line_win(self.board[box])
         if winner != 0 and self.big_board[box] == 0:
             self.big_board[box] = winner
+        elif all(self.board[box][r][c] != 0 for r in range(3) for c in range(3)) and self.big_board[box] == 0:
+            self.big_board[box] = 3
             
         # 更新 active_box (下一手去那個 box)
         if self.big_board[row * 3 + col] == 0:
