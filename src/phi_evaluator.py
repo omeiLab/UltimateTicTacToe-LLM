@@ -1,9 +1,10 @@
-import ollama
+from ollama import Client
 import re
 
 class PhiEvaluator:
     def __init__(self, model="phi4-mini"):
         self.model = model
+        self.client = Client(host="http://127.0.0.1:11434")
 
     def evaluate(self, engine) -> float:
         state_str = engine.to_llm_string()
@@ -43,9 +44,10 @@ Board state:
 {state_str}
 """
 
-        response = ollama.chat(
+        response = self.client.chat(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
+            format="json",
             options={
                 "temperature": 0,
                 "top_p": 1,

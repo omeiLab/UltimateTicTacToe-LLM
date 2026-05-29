@@ -2,19 +2,20 @@ from abc import ABC, abstractmethod
 import json
 import copy
 import sys
-import ollama
+from ollama import Client
 
 class BaseAgent(ABC):
     def __init__(self, model_name="qwen2.5:7b", phi_evaluator=None):
         self.model = model_name
         self.phi = phi_evaluator
+        self.client = Client(host="http://127.0.0.1:11434")
 
     def _call_llm_and_parse_json(self, prompt: str) -> dict:
         """
         JSON Parsing Method (Shared Utility)
         """
         try:
-            response = ollama.chat(model=self.model, messages=[{'role': 'user', 'content': prompt}])
+            response = self.client.chat(model=self.model, messages=[{'role': 'user', 'content': prompt}])
             content = response['message']['content']
             
             # 清理 Markdown 的 JSON 外殼
