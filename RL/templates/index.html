@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>Ultimate Tic-Tac-Toe RL Arena</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="app">
+        <header>
+            <h1>Ultimate Tic-Tac-Toe RL Arena</h1>
+            <p>Human vs AlphaZero-style RL Agent</p>
+        </header>
+
+        <main>
+            <section class="left-panel">
+                <div id="board" class="uttt-board"></div>
+            </section>
+
+            <section class="right-panel">
+                <div class="card">
+                    <h2>Game Status</h2>
+
+                    <div class="status-row">
+                        <span>Current Player</span>
+                        <strong id="current-player">-</strong>
+                    </div>
+
+                    <div class="status-row">
+                        <span>Active Micro-board</span>
+                        <strong id="active-micro">-</strong>
+                    </div>
+
+                    <div class="status-row">
+                        <span>Human</span>
+                        <strong id="human-side">-</strong>
+                    </div>
+
+                    <div class="status-row">
+                        <span>AI</span>
+                        <strong id="ai-side">-</strong>
+                    </div>
+
+                    <div class="status-row">
+                        <span>AI Latency</span>
+                        <strong id="ai-latency">0.000s</strong>
+                    </div>
+
+                    <div class="status-row result">
+                        <span>Result</span>
+                        <strong id="result">Playing</strong>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>New Game</h2>
+
+                    <label>
+                        AI Checkpoint
+                        <select id="checkpoint-select"></select>
+                    </label>
+
+                    <label>
+                        MCTS Simulations
+                        <input id="mcts-sims" type="number" min="1" max="2000" value="100">
+                    </label>
+
+                    <label class="checkbox-row">
+                        <input id="human-first" type="checkbox" checked>
+                        Human First
+                    </label>
+
+                    <button id="new-game-btn">Start New Game</button>
+                </div>
+
+                <div class="card">
+                    <h2>Move History</h2>
+                    <div id="history" class="history"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
