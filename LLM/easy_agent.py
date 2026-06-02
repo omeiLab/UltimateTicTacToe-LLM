@@ -1,4 +1,4 @@
-from llm_agent import BaseAgent
+from .llm_agent import BaseAgent
 
 class EasyAgent(BaseAgent):
     """

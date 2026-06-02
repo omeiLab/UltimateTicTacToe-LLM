@@ -1,6 +1,6 @@
 import copy
-from llm_agent import BaseAgent
-from tactical_engine import simulate_best_reply, fallback_move, tactical_score
+from .llm_agent import BaseAgent
+from .tactical_engine import simulate_best_reply, fallback_move, tactical_score
 
 class MediumAgent(BaseAgent):
     """

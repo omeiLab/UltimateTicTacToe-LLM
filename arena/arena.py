@@ -5,19 +5,11 @@ from tqdm import tqdm
 from engine.engine import UltimateTicTacToeEngine
 
 class ArenaAgent:
-    """
-    競技場專用 Agent 包裝器 (Decorator / Adapter)
-    本質上就是將一個已經 initiate 好的任意 agent 包裝起來，對齊競技場的 get_action 接口。
-    """
     def __init__(self, agent_instance, name: str = "AI_Agent"):
         self.agent = agent_instance
         self.name = name
 
-    def get_action(self, engine: UltimateTicTacToeEngine, legal_moves: List[Tuple[int, int, int]]) -> dict:
-        """
-        對齊競技場的統一接口，動態調用底層真實 agent 的決策方法
-        """
-        # 💡 自動轉接：如果你原本的 LLM Agent 有 get_move 方法，就呼叫它
+    def get_move(self, engine: UltimateTicTacToeEngine, legal_moves: List[Tuple[int, int, int]]) -> dict:
         if hasattr(self.agent, "get_move"):
             return self.agent.get_move(engine, legal_moves)
         

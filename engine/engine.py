@@ -14,6 +14,8 @@ class UltimateTicTacToeEngine:
 
         self.mapping = {0: '.', 1: 'X', 2: 'O'}
 
+        self.history = []  #  (box, row, col, player)
+
     def __str__(self):
         """簡單的視覺化，方便測試"""
         res = f"Active Box: {self.active_box}\n"
@@ -87,6 +89,8 @@ class UltimateTicTacToeEngine:
             self.active_box = row * 3 + col
         else:
             self.active_box = None # 該格已滿或結束，自由落子
+
+        self.history.append((box, row, col, player))
             
         return True
 
