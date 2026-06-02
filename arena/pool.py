@@ -16,8 +16,8 @@ class AgentPool:
         self._pool["easy"] = EasyAgent(model_name="qwen2.5:7b")
         
         # LLM Medium
-        gemma_evaluator = PhiEvaluator(model="gemma2:2b")
-        self._pool["medium"] = MediumAgent(model_name="qwen2.5:7b", phi_evaluator=gemma_evaluator)
+        evaluator = PhiEvaluator(model="phi4-mini")
+        self._pool["medium"] = MediumAgent(model_name="qwen2.5:7b", phi_evaluator=evaluator)
 
         # Minimax
         self._pool["minimax_X"] = MinimaxAdapter(model_player="X", time_limit=3.0)

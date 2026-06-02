@@ -8,12 +8,11 @@ class PhiEvaluator:
 
     def evaluate(self, engine) -> float:
         state_str = engine.to_llm_string()
-        prompt = f"""
-You are a state evaluator for Ultimate Tic-Tac-Toe.
-
+        prompt = f"""You are a state evaluator for Ultimate Tic-Tac-Toe.
 Your task is to evaluate the board state. Assume both players play optimally.
 
-Return ONLY one integer in range [-100, 100].
+You must output a single valid JSON object containing exactly one key "score".
+The "score" value must be a single integer in the range [-100, 100].
 
 Scoring anchors:
     +100 = immediate win for AI
@@ -21,8 +20,6 @@ Scoring anchors:
     0 = equal position
     -50 = opponent advantage
     -100 = opponent winning
-
-If unclear, return 0
 
 Evaluate symmetrically and avoid bias toward negative scores.
 
@@ -32,41 +29,33 @@ Focus on:
   3. Control of key sub-boards
   4. Mobility and future options
 
-Do NOT explain. Do NOT output text.
+You must STRICTLY follow this JSON format. Do not include any reasoning, markdown fences, or extra text.
 
-Example outputs:
-10
--25
-0
-Any output that is not a single integer will be considered invalid.
+Example Output:
+{{
+    "score": 15
+}}
 
 Board state:
 {state_str}
 """
 
-        response = self.client.chat(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            format="json",
-            options={
-                "temperature": 0,
-                "top_p": 1,
-            }
-        )
-
-        text = response["message"]["content"]
-        # print("[PHI RAW OUTPUT]")
-        # print(repr(text))
-
-        # -------------------------------------------------
-        # SAFE PARSER (IMPORTANT)
-        # -------------------------------------------------
-
         try:
-            return int(text)
-        except:
-            match = re.search(r"-?\d+", text)
-            if match:
-                return int(match.group())
-
-            return 0
+            response = self.client.generate(
+                model=self.model,
+                prompt=prompt,
+                format="json",  
+                options={
+                    "temperature": 0.0  
+                }
+            )
+            
+            import json
+            data = json.loads(response['response'].strip())
+            score = float(data.get("score", 0))
+            return max(-100.0, min(100.0, score))
+            
+        except Exception as e:
+            import sys
+            sys.stderr.write(f"⚠️ [PhiEvaluator Error] {str(e)}. Fallback to score 0.\n")
+            return 0.0
