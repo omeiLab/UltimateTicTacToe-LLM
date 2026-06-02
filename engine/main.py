@@ -2,13 +2,13 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
-from engine import UltimateTicTacToeEngine
-from phi_evaluator import PhiEvaluator
-from arena import ArenaAgent
+from engine.engine import UltimateTicTacToeEngine
+from LLM.phi_evaluator import PhiEvaluator
+from arena.arena import ArenaAgent
 
 # 💡 從你拆開的兩個獨立檔案精準引入對應的 Agent 
-from easy_agent import EasyAgent
-from medium_agent import MediumAgent
+from LLM.easy_agent import EasyAgent
+from LLM.medium_agent import MediumAgent
 
 import logging
 

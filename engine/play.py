@@ -1,5 +1,5 @@
 from engine import UltimateTicTacToeEngine
-from llm_agent import LLMAgent
+from LLM.llm_agent import LLMAgent
 
 def play():
     engine = UltimateTicTacToeEngine()

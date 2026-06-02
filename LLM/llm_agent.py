@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 import json
-import copy
 import sys
 from ollama import Client
 

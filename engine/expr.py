@@ -1,8 +1,8 @@
 # src/run_experiment.py
-from phi_evaluator import PhiEvaluator
-from easy_agent import EasyAgent
-from medium_agent import MediumAgent
-from arena import Arena, ArenaAgent
+from LLM.phi_evaluator import PhiEvaluator
+from LLM.easy_agent import EasyAgent
+from LLM.medium_agent import MediumAgent
+from arena.arena import Arena, ArenaAgent
 
 def main():
     # 1. 正常載入與初始化你原本的各種大腦 (與原本網頁端完全對齊)

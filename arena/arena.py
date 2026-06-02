@@ -2,7 +2,7 @@
 import sys
 from typing import List, Tuple
 from tqdm import tqdm
-from engine import UltimateTicTacToeEngine
+from engine.engine import UltimateTicTacToeEngine
 
 class ArenaAgent:
     """
