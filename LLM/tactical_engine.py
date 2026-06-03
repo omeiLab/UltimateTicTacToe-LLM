@@ -1,5 +1,11 @@
 import copy
 
+WIN_SCORE = 150
+BLOCK_SCORE = 120
+CENTER_SCORE = 15
+CORNER_SCORE = 8
+EDGE_SCORE = 2
+
 # =========================================================
 # BASIC TACTICAL CHECKS
 # =========================================================
@@ -34,13 +40,13 @@ def positional_score(r, c):
 
     # center
     if (r, c) == (1, 1):
-        return 10
+        return CENTER_SCORE
 
     # corners
     if (r, c) in [(0,0), (0,2), (2,0), (2,2)]:
-        return 5
+        return CORNER_SCORE
 
-    return 0
+    return EDGE_SCORE
 
 
 # =========================================================
@@ -53,11 +59,11 @@ def tactical_score(engine, b, r, c, player):
 
     # immediate win
     if is_winning_move(engine, b, r, c, player):
-        score += 100
+        score += WIN_SCORE
 
     # block opponent
     if player == 2 and is_blocking_move(engine, b, r, c):
-        score += 80
+        score += BLOCK_SCORE
 
     # positional preference
     score += positional_score(r, c)

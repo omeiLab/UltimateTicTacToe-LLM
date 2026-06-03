@@ -2,11 +2,13 @@ from LLM.easy_agent import EasyAgent
 from LLM.medium_agent import MediumAgent
 from LLM.phi_evaluator import PhiEvaluator
 from .minimax_adapter import MinimaxAdapter
+from .mcts_adapter import MCTSAdapter
 from arena.arena import ArenaAgent
 
 class AgentPool:
     def __init__(self):
         self._pool = {}
+        self.mcts_path = "../Monte_Carlo/cpp/mcts_balance.cpp"
         self.initialize_all_agents()
 
     def initialize_all_agents(self):
@@ -22,6 +24,10 @@ class AgentPool:
         # Minimax
         self._pool["minimax_X"] = MinimaxAdapter(model_player="X", time_limit=3.0)
         self._pool["minimax_O"] = MinimaxAdapter(model_player="O", time_limit=3.0)
+
+        # MCTS
+        self._pool["mcts_X"] = MCTSAdapter(cpp_source_path=self.mcts_path, exe_name="mcts_x_bin", model_player="X")
+        self._pool["mcts_O"] = MCTSAdapter(cpp_source_path=self.mcts_path, exe_name="mcts_o_bin", model_player="O")
         
         print("[AgentPool] Initialization complete. Agents available:", list(self._pool.keys()))
 
@@ -30,6 +36,9 @@ class AgentPool:
         
         if clean_mode == "minimax":
             return "minimax_X" if player_id == 1 else "minimax_O"
+        if clean_mode == "mcts":
+            return "mcts_X" if player_id == 1 else "mcts_O"
+        
         return clean_mode
     
     def get_agent(self, mode_name: str, player_id: int = 2):
@@ -51,10 +60,10 @@ class AgentPool:
 
     def prepare_for_new_game(self):
         # Reset agents if they have a reset method (like MinimaxAdapter)
-        if "minimax_X" in self._pool:
-            self._pool["minimax_X"].reset_agent(starting_player_id=1)
-        if "minimax_O" in self._pool:
-            self._pool["minimax_O"].reset_agent(starting_player_id=1)
+        for key in ["minimax_X", "minimax_O", "mcts_X", "mcts_O"]:
+            agent = self._pool.get(key)
+            if agent and hasattr(agent, "reset_agent"):
+                agent.reset_agent()
 
     def get_pool_list(self):
         return list(self._pool.keys())

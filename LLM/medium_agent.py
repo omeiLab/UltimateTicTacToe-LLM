@@ -2,6 +2,10 @@ import copy
 from .llm_agent import BaseAgent
 from .tactical_engine import simulate_best_reply, fallback_move, tactical_score
 
+PHI_EVAL_WEIGHT = 1.0
+TACTICAL_WEIGHT = 1.3
+OPPONENT_THREAT_WEIGHT = 1.1
+
 class MediumAgent(BaseAgent):
     """
     Medium: Depth-2 Minimax Bounded Adversarial Lookahead
@@ -86,12 +90,12 @@ Do not include any other text outside the JSON object.
             # -------------------------------------------------
             phi_score = self.phi.evaluate(virtual_engine) if self.phi else 0
             determinstic_score = tactical_score(engine, b, r, c, player=2)
-            my_gain = phi_score + determinstic_score * 1.2
+            my_gain = phi_score * PHI_EVAL_WEIGHT + determinstic_score * TACTICAL_WEIGHT
 
             # -------------------------------------------------
             # final score
             # -------------------------------------------------
-            total_score = my_gain - opponent_damage
+            total_score = my_gain - opponent_damage * OPPONENT_THREAT_WEIGHT
             if total_score > best_score:
                 best_score = total_score
                 best_action = {

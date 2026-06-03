@@ -45,7 +45,7 @@ def state():
 def set_mode(setting: ModeSetting):
     global current_mode
     print(setting.mode)
-    if setting.mode in ["easy", "medium", "minimax"]:
+    if setting.mode in ["easy", "medium", "minimax", "mcts"]:
         current_mode = setting.mode
         return {"status": "success", "current_mode": current_mode}
     return {"status": "error", "message": "Invalid mode setting"}

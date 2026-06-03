@@ -169,7 +169,7 @@ export default function App() {
           Reset Game
         </button>
         
-        {/* 👤 手動對戰難度選擇區塊 (升級為 3 選 1) */}
+        {/* Player vs AI */}
         <div className="panel-section">
           <span className="section-title">👤 人類 vs AI 難度</span>
           <div className="mode-selector">
@@ -178,26 +178,33 @@ export default function App() {
               onClick={() => handleModeChange("easy")}
               disabled={isArenaRunning}
             >
-              Easy (Pure Qwen)
+              Easy
             </button>
             <button 
               className={`mode-btn ${mode === "medium" ? "active-mode" : ""}`}
               onClick={() => handleModeChange("medium")}
               disabled={isArenaRunning}
             >
-              Medium (Qwen + Gemma)
+              Medium
             </button>
             <button 
               className={`mode-btn ${mode === "minimax" ? "active-mode" : ""}`}
               onClick={() => handleModeChange("minimax")}
               disabled={isArenaRunning}
             >
-              Minimax (傳統搜索)
+              Minimax
+            </button>
+            <button 
+              className={`mode-btn ${mode === "mcts" ? "active-mode" : ""}`}
+              onClick={() => handleModeChange("mcts")}
+              disabled={isArenaRunning}
+            >
+              MCTS
             </button>
           </div>
         </div>
 
-        {/* ⚔️ AI 競技場陣容配置與控制器 */}
+        {/* AI vs AI */}
         <div className="panel-section arena-section">
           <span className="section-title">⚔️ AI 競技場配置</span>
           
@@ -211,6 +218,7 @@ export default function App() {
               <option value="easy">P1 先手: Easy</option>
               <option value="medium">P1 先手: Medium</option>
               <option value="minimax">P1 先手: Minimax</option>
+              <option value="mcts">P1 先手: MCTS (C++)</option>
             </select>
             
             <span className="vs-text">VS</span>
@@ -224,6 +232,7 @@ export default function App() {
               <option value="easy">P2 後手: Easy</option>
               <option value="medium">P2 後手: Medium</option>
               <option value="minimax">P2 後手: Minimax</option>
+              <option value="mcts">P2 後手: MCTS (C++)</option>
             </select>
           </div>
 
