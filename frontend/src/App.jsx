@@ -1,14 +1,15 @@
 import { useEffect, useState, useRef } from "react";
 import "./App.css";
 
-const API = "http://127.0.0.1:8000";
+const API = "https://unified-anemic-chop.ngrok-free.dev";
 
 export default function App() {
   const [state, setState] = useState(null);
   const [loading, setLoading] = useState(false);
   const [aiInfo, setAiInfo] = useState(null);
-  const [mode, setMode] = useState("easy");    // 追蹤人類對戰模式下的 AI 難度
+  const [mode, setMode] = useState("easy");  
   const [isArenaRunning, setIsArenaRunning] = useState(false);
+  const [sessionId] = useState(() => "user_" + Math.random().toString(36).substring(2, 11));
 
   // 🔥 新增：追蹤 AI 競技場中雙方的指定陣容 
   const [arenaP1, setArenaP1] = useState("easy");
@@ -17,7 +18,13 @@ export default function App() {
   const isArenaRunningRef = useRef(false);
 
   const fetchState = async () => {
-    const res = await fetch(`${API}/state`);
+    const res = await fetch(`${API}/state?session_id=${sessionId}`, { 
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      }
+    });
     const data = await res.json();
     setState(data);
   };
@@ -34,9 +41,12 @@ export default function App() {
     
     setMode(selectedMode);
     try {
-      await fetch(`${API}/set-mode`, {
+      await fetch(`${API}/set-mode?session_id=${sessionId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true"
+        },
         body: JSON.stringify({ mode: selectedMode })
       });
     } catch (err) {
@@ -58,9 +68,12 @@ export default function App() {
     });
 
     try {
-      const res = await fetch(`${API}/move`, {
+      const res = await fetch(`${API}/move?session_id=${sessionId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true"
+        },
         body: JSON.stringify({ box: b, row: r, col: c })
       });
 
@@ -83,9 +96,12 @@ export default function App() {
   // ⚡ 改造：將前端選擇的雙方模式打包 POST 送給升級後的後端
   const triggerArenaStep = async () => {
     try {
-      const res = await fetch(`${API}/arena-step`, { 
+      const res = await fetch(`${API}/arena-step?session_id=${sessionId}`, { 
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true"
+        },
         body: JSON.stringify({
           p1_mode: arenaP1,
           p2_mode: arenaP2
@@ -151,7 +167,13 @@ export default function App() {
     setIsArenaRunning(false);
     isArenaRunningRef.current = false;
     setLoading(true);
-    await fetch(`${API}/reset`, { method: "POST" });
+    await fetch(`${API}/reset?session_id=${sessionId}`, { 
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      }
+    });
     setAiInfo(null);
     await fetchState();
     setLoading(false);

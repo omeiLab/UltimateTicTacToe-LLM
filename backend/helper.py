@@ -26,3 +26,4 @@ def run_ai_turn(engine, current_agent, current_player: int) -> Dict[str, Any]:
     # current_player = 1 or 2
     engine.make_move(action["box"], action["row"], action["col"], player=current_player)
     return action
+
