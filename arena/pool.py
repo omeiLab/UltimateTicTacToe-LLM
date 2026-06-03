@@ -3,6 +3,7 @@ from LLM.medium_agent import MediumAgent
 from LLM.phi_evaluator import PhiEvaluator
 from .minimax_adapter import MinimaxAdapter
 from .mcts_adapter import MCTSAdapter
+from .rl_adapter import RLAdapter
 from arena.arena import ArenaAgent
 
 class AgentPool:
@@ -26,8 +27,12 @@ class AgentPool:
         self._pool["minimax_O"] = MinimaxAdapter(model_player="O", time_limit=3.0)
 
         # MCTS
-        self._pool["mcts_X"] = MCTSAdapter(cpp_source_path=self.mcts_path, exe_name="mcts_x_bin", model_player="X")
-        self._pool["mcts_O"] = MCTSAdapter(cpp_source_path=self.mcts_path, exe_name="mcts_o_bin", model_player="O")
+        self._pool["mcts_X"] = MCTSAdapter(exe_name="mcts_x_bin", model_player="X")
+        self._pool["mcts_O"] = MCTSAdapter(exe_name="mcts_o_bin", model_player="O")
+
+        # RL
+        self._pool["rl_X"] = RLAdapter(model_id=200, num_simulations=120, model_player="X")
+        self._pool["rl_O"] = RLAdapter(model_id=200, num_simulations=120, model_player="O")
         
         print("[AgentPool] Initialization complete. Agents available:", list(self._pool.keys()))
 
@@ -38,6 +43,8 @@ class AgentPool:
             return "minimax_X" if player_id == 1 else "minimax_O"
         if clean_mode == "mcts":
             return "mcts_X" if player_id == 1 else "mcts_O"
+        if clean_mode == "rl":
+            return "rl_X" if player_id == 1 else "rl_O"
         
         return clean_mode
     
@@ -60,7 +67,7 @@ class AgentPool:
 
     def prepare_for_new_game(self):
         # Reset agents if they have a reset method (like MinimaxAdapter)
-        for key in ["minimax_X", "minimax_O", "mcts_X", "mcts_O"]:
+        for key in ["minimax_X", "minimax_O", "mcts_X", "mcts_O", "rl_X", "rl_O"]:
             agent = self._pool.get(key)
             if agent and hasattr(agent, "reset_agent"):
                 agent.reset_agent()

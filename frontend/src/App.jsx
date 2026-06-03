@@ -201,6 +201,13 @@ export default function App() {
             >
               MCTS
             </button>
+            <button 
+              className={`mode-btn ${mode === "rl" ? "active-mode" : ""}`}
+              onClick={() => handleModeChange("rl")}
+              disabled={isArenaRunning}
+            >
+              RL
+            </button>
           </div>
         </div>
 
@@ -218,7 +225,8 @@ export default function App() {
               <option value="easy">P1 先手: Easy</option>
               <option value="medium">P1 先手: Medium</option>
               <option value="minimax">P1 先手: Minimax</option>
-              <option value="mcts">P1 先手: MCTS (C++)</option>
+              <option value="mcts">P1 先手: MCTS</option>
+              <option value="rl">P1 先手: RL</option>
             </select>
             
             <span className="vs-text">VS</span>
@@ -232,7 +240,8 @@ export default function App() {
               <option value="easy">P2 後手: Easy</option>
               <option value="medium">P2 後手: Medium</option>
               <option value="minimax">P2 後手: Minimax</option>
-              <option value="mcts">P2 後手: MCTS (C++)</option>
+              <option value="mcts">P2 後手: MCTS</option>
+              <option value="rl">P2 後手: RL</option>
             </select>
           </div>
 

@@ -4,11 +4,11 @@ import sys
 from typing import List, Tuple
 
 class MCTSAdapter:
-    def __init__(self, cpp_source_path: str = "mcts_balance.cpp", exe_name: str = "mcts_ai", model_player: str = "O"):
+    def __init__(self, exe_name: str = "mcts_ai", model_player: str = "O"):
         """
         model_player: X (ID=1), "O" (ID=2)
         """
-        self.cpp_path = cpp_source_path
+        self.cpp_path = "../Monte_Carlo/cpp/mcts_balance.cpp"
         self.exe_name = exe_name
         self.model_player = model_player
         self.process = None
