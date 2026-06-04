@@ -6,20 +6,23 @@ class PhiEvaluator:
         self.model = model
         self.client = Client(host="http://127.0.0.1:11434")
 
-    def evaluate(self, engine) -> float:
+    def evaluate(self, engine, ai_player: int) -> float:
         state_str = engine.to_llm_string()
+        opp_player = 2 if ai_player == 1 else 1
         prompt = f"""You are a state evaluator for Ultimate Tic-Tac-Toe.
 Your task is to evaluate the board state. Assume both players play optimally.
+
+In this game, the AI is currently "Player {ai_player}" and the Human Opponent is "Player {opp_player}".
 
 You must output a single valid JSON object containing exactly one key "score".
 The "score" value must be a single integer in the range [-100, 100].
 
 Scoring anchors:
-    +100 = immediate win for AI
-    +50 = strong advantage
+    +100 = immediate win for AI (Player {ai_player})
+    +50 = strong advantage for AI
     0 = equal position
-    -50 = opponent advantage
-    -100 = opponent winning
+    -50 = opponent (Player {opp_player}) advantage
+    -100 = opponent (Player {opp_player}) winning
 
 Evaluate symmetrically and avoid bias toward negative scores.
 
@@ -57,5 +60,5 @@ Board state:
             
         except Exception as e:
             import sys
-            sys.stderr.write(f"⚠️ [PhiEvaluator Error] {str(e)}. Fallback to score 0.\n")
+            sys.stderr.write(f"[PhiEvaluator Error] {str(e)}. Fallback to score 0.\n")
             return 0.0

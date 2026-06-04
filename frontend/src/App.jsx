@@ -244,11 +244,11 @@ export default function App() {
               disabled={isArenaRunning}
               className="arena-select"
             >
-              <option value="easy">P1 先手: Easy</option>
-              <option value="medium">P1 先手: Medium</option>
-              <option value="minimax">P1 先手: Minimax</option>
-              <option value="mcts">P1 先手: MCTS</option>
-              <option value="rl">P1 先手: RL</option>
+              <option value="easy">X: Easy</option>
+              <option value="medium">X: Medium</option>
+              <option value="minimax">X: Minimax</option>
+              <option value="mcts">X: MCTS</option>
+              <option value="rl">X: RL</option>
             </select>
             
             <span className="vs-text">VS</span>
@@ -259,11 +259,11 @@ export default function App() {
               disabled={isArenaRunning}
               className="arena-select"
             >
-              <option value="easy">P2 後手: Easy</option>
-              <option value="medium">P2 後手: Medium</option>
-              <option value="minimax">P2 後手: Minimax</option>
-              <option value="mcts">P2 後手: MCTS</option>
-              <option value="rl">P2 後手: RL</option>
+              <option value="easy">O: Easy</option>
+              <option value="medium">O: Medium</option>
+              <option value="minimax">O: Minimax</option>
+              <option value="mcts">O: MCTS</option>
+              <option value="rl">O: RL</option>
             </select>
           </div>
 
@@ -348,7 +348,7 @@ export default function App() {
         <div className="ai-reason-box">
           <h3>Latest Decision Track:</h3>
           <p style={{ fontWeight: "bold", color: "#3b82f6", marginBottom: "5px" }}>
-            落子點：Box {aiInfo.box}, Row {aiInfo.row}, Col {aiInfo.col}
+            Box {aiInfo.box}, Row {aiInfo.row}, Col {aiInfo.col}
           </p>
           <p>{aiInfo.reason}</p>
         </div>

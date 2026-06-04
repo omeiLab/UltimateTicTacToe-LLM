@@ -61,8 +61,11 @@ def tactical_score(engine, b, r, c, player):
     if is_winning_move(engine, b, r, c, player):
         score += WIN_SCORE
 
+    # blocking should be symmetric logic
+    opponent = 1 if player == 2 else 2
+
     # block opponent
-    if player == 2 and is_blocking_move(engine, b, r, c):
+    if is_winning_move(engine, b, r, c, opponent):
         score += BLOCK_SCORE
 
     # positional preference

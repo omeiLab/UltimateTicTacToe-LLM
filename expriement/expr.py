@@ -17,7 +17,7 @@ def main():
     agent_pool = AgentPool()
     GAMES_PER_MATCHUP = 10
 
-    run_experiment_matchup(agent_pool, p1_mode="medium", p2_mode="minimax", num_games=GAMES_PER_MATCHUP)
+    run_experiment_matchup(agent_pool, p1_mode="medium", p2_mode="hard", num_games=GAMES_PER_MATCHUP)
     # run_experiment_matchup(agent_pool, p1_mode="medium", p2_mode="minimax", num_games=GAMES_PER_MATCHUP)
     # run_experiment_matchup(agent_pool, p1_mode="easy", p2_mode="medium", num_games=GAMES_PER_MATCHUP)
 

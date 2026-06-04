@@ -23,7 +23,7 @@ class Arena:
     def __init__(self, p1: ArenaAgent, p2: ArenaAgent, agent_pool=None):
         self.p1 = p1
         self.p2 = p2
-        self.agent_pool = agent_pool # 可選傳入 全域的 agent_pool 以便執行標準重置
+        self.agent_pool = agent_pool 
         
         self.stats = {
             "p1_wins": 0,
@@ -51,53 +51,69 @@ class Arena:
             print(f"\n===== Game Start: {self.p1.name} (X) vs {self.p2.name} (O) =====")
 
         move_count = 0
+        
+        # 💡 初始化時先設定好起始描述
+        with tqdm(total=81, desc=f"🕹️ Step 1 | Score: 0-0 (0D) | Next: {self.p1.name}", leave=False, disable=verbose) as pbar:
+            while engine.check_game_over() == 0:
+                legal_moves = engine.get_legal_moves()
+                total_pieces = sum(1 for b in range(9) for r in range(3) for c in range(3) if engine.board[b][r][c] != 0)
+                current_player = 1 if total_pieces % 2 == 0 else 2
 
-        while engine.check_game_over() == 0:
-            legal_moves = engine.get_legal_moves()
-            total_pieces = sum(1 for b in range(9) for r in range(3) for c in range(3) if engine.board[b][r][c] != 0)
-            current_player = 1 if total_pieces % 2 == 0 else 2
+                active_arena_agent = self.p1 if current_player == 1 else self.p2
 
-            active_arena_agent = self.p1 if current_player == 1 else self.p2
+                # -------------------------------------------------
+                # 🧠 大模型長考區（這時候畫面會定格在上一手最後更新的比分）
+                # -------------------------------------------------
+                start_time = time.time()
+                action = active_arena_agent.get_move(engine, legal_moves)
+                latency = time.time() - start_time
 
-            # time measurement for latency analysis
-            start_time = time.time()
-            action = active_arena_agent.get_move(engine, legal_moves)
-            latency = time.time() - start_time
-
-            # time metric recording
-            if current_player == 1:
-                self.stats["p1_latencies"].append(latency)
-            else:
-                self.stats["p2_latencies"].append(latency)
-
-            ai_choice = (action.get("box"), action.get("row"), action.get("col"))
-
-            # defense against hallucinations: if the AI returns an illegal move, we count it and force a fallback to a legal move
-            if ai_choice not in legal_moves:
                 if current_player == 1:
-                    self.stats["p1_illegal_attempts"] += 1
+                    self.stats["p1_latencies"].append(latency)
                 else:
-                    self.stats["p2_illegal_attempts"] += 1
+                    self.stats["p2_latencies"].append(latency)
+
+                ai_choice = (action.get("box"), action.get("row"), action.get("col"))
+
+                is_hallucination = False
+                if ai_choice not in legal_moves:
+                    is_hallucination = True
+                    if current_player == 1:
+                        self.stats["p1_illegal_attempts"] += 1
+                    else:
+                        self.stats["p2_illegal_attempts"] += 1
+                    
+                    fallback_move = legal_moves[0]
+                    box, row, col = fallback_move[0], fallback_move[1], fallback_move[2]
+                    if verbose:
+                        sys.stderr.write(f"⚠️ [{active_arena_agent.name}] Hallucination! Wanted {ai_choice}. Forced fallback to {fallback_move}.\n")
+                else:
+                    box, row, col = ai_choice[0], ai_choice[1], ai_choice[2]
+
+                # 💡 執行落子，此時大盤狀態正式改變！
+                engine.make_move(box, row, col, player=current_player)
+                if not hasattr(engine, "history"):
+                    engine.history = []
+                engine.history.append((box, row, col, current_player))
                 
-                fallback_move = legal_moves[0]
-                box, row, col = fallback_move[0], fallback_move[1], fallback_move[2]
+                move_count += 1
+                
+                # 抓出下一手準備要動的人是誰，提早顯示
+                next_agent_name = self.p2.name if current_player == 1 else self.p1.name
+                
+                pbar.set_description(
+                    f'🕹️ Step {move_count+1} | Score: {self.stats["p1_wins"]}-{self.stats["p2_wins"]} ({self.stats["draws"]}D) | Next: {next_agent_name}'
+                )
+
+                pbar.update(1)
+                pbar.set_postfix({
+                    "latency": f"{latency:.2f}s",
+                    "hallu": "⚠️" if is_hallucination else "✅"
+                })
+
                 if verbose:
-                    sys.stderr.write(f"⚠️ [{active_arena_agent.name}] Hallucination! Wanted {ai_choice}. Forced fallback to {fallback_move}.\n")
-            else:
-                box, row, col = ai_choice[0], ai_choice[1], ai_choice[2]
+                    print(f"[{active_arena_agent.name}] Step {move_count} -> Box {box}, Row {row}, Col {col} | Latency: {latency:.3f}s | Reason: {action.get('reason', 'None')}")
 
-            # Make the move on the engine
-            engine.make_move(box, row, col, player=current_player)
-            if not hasattr(engine, "history"):
-                engine.history = []
-            engine.history.append((box, row, col, current_player))
-            
-            move_count += 1
-
-            if verbose:
-                print(f"[{active_arena_agent.name}] Step {move_count} -> Box {box}, Row {row}, Col {col} | Latency: {latency:.3f}s | Reason: {action.get('reason', 'None')}")
-
-        # Game over, determine the result
         result = engine.check_game_over()
         if result == 1:
             self.stats["p1_wins"] += 1
@@ -119,10 +135,9 @@ class Arena:
 
         print(f"Starting Benchmark Pipeline: {num_games} Games")
         
-        for _ in tqdm(range(num_games), desc="Simulating Matches"):
+        for i in tqdm(range(num_games), desc="🏆 Simulating Matches"):
             self.run_single_game(verbose=verbose)
 
-        # Post-processing
         p1_rate = (self.stats["p1_wins"] / num_games) * 100
         p2_rate = (self.stats["p2_wins"] / num_games) * 100
         draw_rate = (self.stats["draws"] / num_games) * 100

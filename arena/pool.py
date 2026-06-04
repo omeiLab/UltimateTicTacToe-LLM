@@ -1,5 +1,6 @@
 from LLM.easy_agent import EasyAgent
 from LLM.medium_agent import MediumAgent
+from LLM.hard_agent import HardAgent
 from LLM.phi_evaluator import PhiEvaluator
 from .minimax_adapter import MinimaxAdapter
 from .mcts_adapter import MCTSAdapter

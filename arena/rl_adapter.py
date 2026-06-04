@@ -15,7 +15,7 @@ class RLAdapter:
         """
         self.model_player = model_player
         self.num_simulations = num_simulations
-        self.model_path = f"../RL/checkpoints/uttt_model_iter_{model_id}.pth"
+        self.model_path = f"RL/checkpoints/uttt_model_iter_{model_id}.pth"
         self.model = UTTTNet(num_res_blocks=3, num_channels=64).to(DEVICE)
         
         if os.path.exists(self.model_path):

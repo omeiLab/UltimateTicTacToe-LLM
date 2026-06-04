@@ -2,9 +2,9 @@ import copy
 from .llm_agent import BaseAgent
 from .tactical_engine import simulate_best_reply, fallback_move, tactical_score
 
-PHI_EVAL_WEIGHT = 1.0
-TACTICAL_WEIGHT = 1.3
-OPPONENT_THREAT_WEIGHT = 1.1
+PHI_EVAL_WEIGHT = 0.4
+TACTICAL_WEIGHT = 0.6
+OPPONENT_THREAT_WEIGHT = 1.0
 
 class MediumAgent(BaseAgent):
     """
@@ -25,11 +25,13 @@ Current Board State:
 Valid Moves (box, row, col):
 {legal_moves}
 
-Propose exactly 3 DIFFERENT candidate moves from the Valid Moves, ordered from highest recommendation to lowest.
+Propose exactly 5 DIFFERENT candidate moves from the Valid Moves, ordered from highest recommendation to lowest.
 Output MUST be in valid JSON format ONLY.
 Structure:
 {{
   "candidates": [
+    {{"box": int, "row": int, "col": int, "reason": "string"}},
+    {{"box": int, "row": int, "col": int, "reason": "string"}},
     {{"box": int, "row": int, "col": int, "reason": "string"}},
     {{"box": int, "row": int, "col": int, "reason": "string"}},
     {{"box": int, "row": int, "col": int, "reason": "string"}}
@@ -54,6 +56,11 @@ Do not include any other text outside the JSON object.
         # fallback if LLM failed
         if "error" in result or not candidates:
             return fallback_move(legal_moves)
+        
+        # check who is P1 and P2
+        total_pieces = sum(1 for b in range(9) for r in range(3) for c in range(3) if engine.board[b][r][c] != 0)
+        ai_player = 1 if total_pieces % 2 == 0 else 2
+        opp_player = 2 if ai_player == 1 else 1
 
         best_action = None
         best_score = -99999
@@ -74,22 +81,32 @@ Do not include any other text outside the JSON object.
             # simulate my move
             # -------------------------------------------------
             virtual_engine = copy.deepcopy(engine)
-            virtual_engine.make_move(b, r, c, player=2)
+            virtual_engine.make_move(b, r, c, player=ai_player)
 
             # -------------------------------------------------
             # deterministic opponent simulation
             # -------------------------------------------------
             opponent_move, opponent_damage = simulate_best_reply(
                 virtual_engine,
-                opponent_player=1
+                opponent_player=opp_player
             )
+
+            # normalize
+            opponent_damage /= 150.0
 
             # -------------------------------------------------
             # tactical self gain
             # (temporary heuristic before Phi evaluator)
             # -------------------------------------------------
-            phi_score = self.phi.evaluate(virtual_engine) if self.phi else 0
-            determinstic_score = tactical_score(engine, b, r, c, player=2)
+            phi_score = self.phi.evaluate(virtual_engine, ai_player) if self.phi else 0
+            determinstic_score = tactical_score(virtual_engine, b, r, c, player=ai_player)
+
+            # normalize & clipping
+            phi_score /= 100.0
+            phi_score = max(-1.0, min(1.0, phi_score))
+            determinstic_score /= 150.0
+
+            # calculate my gain with weighted sum
             my_gain = phi_score * PHI_EVAL_WEIGHT + determinstic_score * TACTICAL_WEIGHT
 
             # -------------------------------------------------
@@ -104,8 +121,8 @@ Do not include any other text outside the JSON object.
                     "col": c,
                     "reason": (
                         f"{cand.get('reason', '')} "
-                        f"(Medium Eval: {my_gain} / "
-                        f"Enemy Threat: -{opponent_damage})"
+                        f"(Medium Eval: {my_gain:.2f} / "
+                        f"Enemy Threat: -{opponent_damage:.2f})"
                     )
                 }
 

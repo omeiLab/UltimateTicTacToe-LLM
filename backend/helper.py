@@ -9,7 +9,6 @@ def get_state(engine) -> Dict[str, Any]:
     }
 
 def run_ai_turn(engine, current_agent, current_player: int) -> Dict[str, Any]:
-    print(f"📡 [DEBUG] 當前出手的大腦類別是: {type(current_agent)}，它是: {getattr(current_agent, 'model_player', '無角色')}")
     legal = engine.get_legal_moves()
     action = current_agent.get_move(engine, legal)
     

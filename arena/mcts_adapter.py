@@ -8,7 +8,7 @@ class MCTSAdapter:
         """
         model_player: X (ID=1), "O" (ID=2)
         """
-        self.cpp_path = "../Monte_Carlo/cpp/mcts_balance.cpp"
+        self.cpp_path = "Monte_Carlo/cpp/mcts_balance.cpp"
         self.exe_name = exe_name
         self.model_player = model_player
         self.process = None
