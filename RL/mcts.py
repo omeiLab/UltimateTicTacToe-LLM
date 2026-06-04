@@ -2,29 +2,192 @@ import math
 import numpy as np
 import torch
 
-class MCTSNode:
-    def __init__(self, action=None, p=0.0, parent=None):
-        self.action = action
-        self.parent = parent
-        self.children = {}
-        
-        self.n = 0
-        self.w = 0.0
-        self.q = 0.0
-        self.p = p
+WIN_LINES = (
+    (0, 1, 2),
+    (3, 4, 5),
+    (6, 7, 8),
+    (0, 3, 6),
+    (1, 4, 7),
+    (2, 5, 8),
+    (0, 4, 8),
+    (2, 4, 6),
+)
 
-    def is_leaf(self):
-        return len(self.children) == 0
+ACTION_TO_GR = np.empty(81, dtype=np.int8)
+ACTION_TO_GC = np.empty(81, dtype=np.int8)
+for _a in range(81):
+    _m = _a // 9
+    _c = _a % 9
+    _mr = _m // 3
+    _mc = _m % 3
+    _lr = _c // 3
+    _lc = _c % 3
+    ACTION_TO_GR[_a] = _mr * 3 + _lr
+    ACTION_TO_GC[_a] = _mc * 3 + _lc
 
-    def get_puct(self, c_puct):
-        parent_n = self.parent.n if self.parent else 1
-        u = c_puct * self.p * math.sqrt(parent_n) / (1 + self.n)
-        return self.q + u
 
-    def update(self, value):
-        self.n += 1
-        self.w += value
-        self.q = self.w / self.n
+class FastBoard:
+    """
+    Lightweight clone of UltimateTicTacToeEnv state.
+
+    board[action] stores:
+        0  = empty
+        1  = O
+       -1  = X
+
+    macro[m] stores:
+        0  = unfinished micro board
+        1  = O won that micro board
+       -1  = X won that micro board
+        2  = draw / filled micro board
+    """
+
+    __slots__ = ("board", "macro", "active", "current")
+
+    def __init__(self, board, macro, active, current):
+        self.board = board
+        self.macro = macro
+        self.active = active
+        self.current = current
+
+    @classmethod
+    def from_env(cls, env):
+        return cls(
+            env.board.reshape(81).astype(np.int8, copy=True),
+            env.macro_board.astype(np.int8, copy=True),
+            int(env.active_micro),
+            int(env.current_player),
+        )
+
+    def clone(self):
+        return FastBoard(
+            self.board.copy(),
+            self.macro.copy(),
+            self.active,
+            self.current,
+        )
+
+    def legal_actions_list(self):
+        board = self.board
+        macro = self.macro
+        active = self.active
+
+        actions = []
+
+        if active == -1 or macro[active] != 0:
+            for m in range(9):
+                if macro[m] != 0:
+                    continue
+                base = m * 9
+                for c in range(9):
+                    a = base + c
+                    if board[a] == 0:
+                        actions.append(a)
+        else:
+            base = active * 9
+            for c in range(9):
+                a = base + c
+                if board[a] == 0:
+                    actions.append(a)
+
+        return actions
+
+    def legal_mask_np(self):
+        mask = np.zeros(81, dtype=np.int8)
+        for a in self.legal_actions_list():
+            mask[a] = 1
+        return mask
+
+    def check_micro_win(self, m, player):
+        board = self.board
+        base = m * 9
+        for a, b, c in WIN_LINES:
+            if (
+                board[base + a] == player
+                and board[base + b] == player
+                and board[base + c] == player
+            ):
+                return True
+        return False
+
+    def check_macro_win(self, player):
+        macro = self.macro
+        for a, b, c in WIN_LINES:
+            if macro[a] == player and macro[b] == player and macro[c] == player:
+                return True
+        return False
+
+    def micro_full(self, m):
+        board = self.board
+        base = m * 9
+        for c in range(9):
+            if board[base + c] == 0:
+                return False
+        return True
+
+    def macro_full(self):
+        macro = self.macro
+        for m in range(9):
+            if macro[m] == 0:
+                return False
+        return True
+
+    def play(self, action):
+        """
+        Apply action.
+        Returns:
+            1.0 if the player who just moved wins the whole game
+            0.0 if game draws
+            None if not terminal
+        """
+        player = self.current
+        m = action // 9
+        c = action % 9
+
+        self.board[action] = player
+
+        if self.macro[m] == 0:
+            if self.check_micro_win(m, player):
+                self.macro[m] = player
+            elif self.micro_full(m):
+                self.macro[m] = 2
+
+        if self.check_macro_win(player):
+            self.current = -player
+            self.active = -1
+            return 1.0
+
+        if self.macro_full():
+            self.current = -player
+            self.active = -1
+            return 0.0
+
+        if self.macro[c] != 0:
+            self.active = -1
+        else:
+            self.active = c
+
+        self.current = -player
+        return None
+
+    def terminal_value_for_player_to_move(self):
+        """
+        Value from the perspective of the player to move.
+        In a terminal win state, the previous player won, so current player lost.
+        Returns:
+            -1.0 if previous player won
+             0.0 if draw
+             None if non-terminal
+        """
+        previous_player = -self.current
+
+        if self.check_macro_win(previous_player):
+            return -1.0
+
+        if self.macro_full():
+            return 0.0
+
+        return None
 
 
 class MCTS:
@@ -35,32 +198,53 @@ class MCTS:
         self.num_simulations = num_simulations
 
     def get_action_prob(self, env, temp=1.0, add_noise=False):
-        root = MCTSNode()
+        root_state = FastBoard.from_env(env)
+
+        parents = [-1]
+        actions = [-1]
+        priors = [0.0]
+        visits = [0]
+        wins = [0.0]
+        children = [{}]
 
         for _ in range(self.num_simulations):
-            sim_env = self._clone_env(env)
-            node = root
+            state = root_state.clone()
+            node = 0
 
-            while not node.is_leaf():
-                action, node = self._select_child(node)
-                sim_env.step(action)
+            while children[node]:
+                action, next_node = self._select_child_array(
+                    node,
+                    children,
+                    visits,
+                    wins,
+                    priors,
+                )
+                state.play(action)
+                node = next_node
 
-            legal_masks = sim_env.get_legal_actions()
-
-            last_player_won = sim_env._check_3x3_win(
-                sim_env.macro_board,
-                -sim_env.current_player
-            )
-
-            if last_player_won:
-                self._backpropagate(node, -1.0)
+            terminal_value = state.terminal_value_for_player_to_move()
+            if terminal_value is not None:
+                self._backpropagate_array(
+                    node,
+                    terminal_value,
+                    parents,
+                    visits,
+                    wins,
+                )
                 continue
 
-            elif np.all(sim_env.macro_board != 0):
-                self._backpropagate(node, 0.0)
+            legal_actions = state.legal_actions_list()
+            if not legal_actions:
+                self._backpropagate_array(
+                    node,
+                    0.0,
+                    parents,
+                    visits,
+                    wins,
+                )
                 continue
 
-            feature_tensor = self._env_obs_to_tensor(sim_env, legal_masks).to(self.device)
+            feature_tensor = self._fast_state_to_tensor(state, legal_actions)
 
             with torch.inference_mode():
                 if self.device.type == "cuda":
@@ -69,84 +253,144 @@ class MCTS:
                 else:
                     policy_logits, value_tensor = self.model(feature_tensor)
 
-            policy_logits = policy_logits.float().cpu().numpy()[0]
-            v = float(value_tensor.float().cpu().item())
+            logits = policy_logits.float().detach().cpu().numpy()[0]
+            value = float(value_tensor.float().detach().cpu().item())
 
-            policy_logits = policy_logits.astype(np.float32)
-            policy_logits[legal_masks == 0] = -1e9
+            legal_logits = logits[legal_actions].astype(np.float64, copy=False)
+            legal_logits -= np.max(legal_logits)
+            exp_logits = np.exp(legal_logits)
+            sum_exp = float(np.sum(exp_logits))
 
-            exp_logits = np.exp(policy_logits - np.max(policy_logits))
-            probs = exp_logits / np.sum(exp_logits)
+            if sum_exp <= 0.0 or not math.isfinite(sum_exp):
+                legal_probs = np.full(
+                    len(legal_actions),
+                    1.0 / len(legal_actions),
+                    dtype=np.float64,
+                )
+            else:
+                legal_probs = exp_logits / sum_exp
 
-            legal_indices = np.where(legal_masks == 1)[0]
-
-            if add_noise and node is root and len(legal_indices) > 0:
+            if add_noise and node == 0 and len(legal_actions) > 0:
                 alpha = 0.3
                 eps = 0.25
-                noise = np.random.dirichlet([alpha] * len(legal_indices))
-                probs[legal_indices] = (
-                    (1.0 - eps) * probs[legal_indices]
-                    + eps * noise
-                )
+                noise = np.random.dirichlet([alpha] * len(legal_actions))
+                legal_probs = (1.0 - eps) * legal_probs + eps * noise
 
-            for act in legal_indices:
-                node.children[act] = MCTSNode(
-                    action=act,
-                    p=float(probs[act]),
-                    parent=node
-                )
+            node_children = children[node]
+            for act, p in zip(legal_actions, legal_probs):
+                child_id = len(parents)
+                parents.append(node)
+                actions.append(int(act))
+                priors.append(float(p))
+                visits.append(0)
+                wins.append(0.0)
+                children.append({})
+                node_children[int(act)] = child_id
 
-            self._backpropagate(node, v)
+            self._backpropagate_array(
+                node,
+                value,
+                parents,
+                visits,
+                wins,
+            )
 
-        counts = np.array(
-            [root.children[act].n if act in root.children else 0 for act in range(81)],
-            dtype=np.float32
-        )
+        counts = np.zeros(81, dtype=np.float32)
+        for act, child_id in children[0].items():
+            counts[act] = visits[child_id]
 
         if temp <= 1e-2:
             probs = np.zeros(81, dtype=np.float32)
+            max_count = float(np.max(counts))
 
-            max_count = np.max(counts)
-            best_acts = np.argwhere(counts == max_count).flatten()
-
-            if len(best_acts) == 0 or max_count == 0:
+            if max_count <= 0.0:
                 legal = env.get_legal_actions().astype(np.float32)
-                return legal / np.sum(legal)
+                s = float(np.sum(legal))
+                return legal / s if s > 0 else legal
 
-            probs[np.random.choice(best_acts)] = 1.0
+            best_acts = np.flatnonzero(counts == max_count)
+            probs[int(np.random.choice(best_acts))] = 1.0
             return probs
 
-        counts = counts.astype(np.float64)
-        counts = counts ** (1.0 / temp)
+        counts64 = counts.astype(np.float64)
+        counts64 = counts64 ** (1.0 / temp)
+        sum_counts = float(np.sum(counts64))
 
-        sum_counts = np.sum(counts)
-
-        if sum_counts <= 0 or np.isnan(sum_counts) or np.isinf(sum_counts):
+        if sum_counts <= 0.0 or not math.isfinite(sum_counts):
             legal = env.get_legal_actions().astype(np.float32)
-            return legal / np.sum(legal)
+            s = float(np.sum(legal))
+            return legal / s if s > 0 else legal
 
-        return (counts / sum_counts).astype(np.float32)
+        return (counts64 / sum_counts).astype(np.float32)
 
-    def _select_child(self, node):
-        best_score = -float('inf')
+    def _select_child_array(self, node, children, visits, wins, priors):
+        best_score = -1e100
         best_action = None
         best_child = None
 
-        for action, child in node.children.items():
-            score = child.get_puct(self.c_puct)
+        parent_n = max(1, visits[node])
+        sqrt_parent = math.sqrt(parent_n)
+        c = self.c_puct
+
+        for action, child_id in children[node].items():
+            child_n = visits[child_id]
+            q = wins[child_id] / child_n if child_n > 0 else 0.0
+            u = c * priors[child_id] * sqrt_parent / (1 + child_n)
+            score = q + u
+
             if score > best_score:
                 best_score = score
                 best_action = action
-                best_child = child
+                best_child = child_id
+
         return best_action, best_child
 
-    def _backpropagate(self, node, value):
-        value = -value 
-    
-        while node is not None:
-            node.update(value)
+    def _backpropagate_array(self, node, value, parents, visits, wins):
+        value = -value
+
+        while node != -1:
+            visits[node] += 1
+            wins[node] += value
             value = -value
-            node = node.parent
+            node = parents[node]
+
+    def _fast_state_to_tensor(self, state, legal_actions):
+        board = state.board
+        macro = state.macro
+        current = state.current
+
+        feature = np.zeros((5, 9, 9), dtype=np.float32)
+
+        occupied = np.flatnonzero(board)
+        if occupied.size > 0:
+            rows = ACTION_TO_GR[occupied]
+            cols = ACTION_TO_GC[occupied]
+            vals = board[occupied]
+
+            me = vals == current
+            opp = vals == -current
+
+            if np.any(me):
+                feature[0, rows[me], cols[me]] = 1.0
+            if np.any(opp):
+                feature[1, rows[opp], cols[opp]] = 1.0
+
+        if legal_actions:
+            legal_arr = np.asarray(legal_actions, dtype=np.int16)
+            feature[2, ACTION_TO_GR[legal_arr], ACTION_TO_GC[legal_arr]] = 1.0
+
+        for m in range(9):
+            mr = m // 3
+            mc = m % 3
+            rs = mr * 3
+            cs = mc * 3
+
+            if macro[m] == current:
+                feature[3, rs:rs + 3, cs:cs + 3] = 1.0
+            elif macro[m] == -current:
+                feature[4, rs:rs + 3, cs:cs + 3] = 1.0
+
+        return torch.from_numpy(feature).unsqueeze(0).to(self.device, non_blocking=True)
 
     def _clone_env(self, env):
         new_env = env.__class__()
@@ -157,52 +401,6 @@ class MCTS:
         return new_env
 
     def _env_obs_to_tensor(self, env, legal_masks):
-        board = env.board
-        current_player = env.current_player
-
-        p1_map = np.zeros((9, 9), dtype=np.float32)
-        p2_map = np.zeros((9, 9), dtype=np.float32)
-        mask_map = np.zeros((9, 9), dtype=np.float32)
-        macro_me_map = np.zeros((9, 9), dtype=np.float32)
-        macro_opp_map = np.zeros((9, 9), dtype=np.float32)
-
-        for m in range(9):
-            macro_row, macro_col = m // 3, m % 3
-
-            r_start = macro_row * 3
-            r_end = r_start + 3
-            c_start = macro_col * 3
-            c_end = c_start + 3
-
-            p1_map[r_start:r_end, c_start:c_end] = (
-                board[m] == current_player
-            ).astype(np.float32)
-
-            p2_map[r_start:r_end, c_start:c_end] = (
-                board[m] == -current_player
-            ).astype(np.float32)
-
-            sub_mask = legal_masks[m * 9:(m + 1) * 9].reshape(3, 3)
-            mask_map[r_start:r_end, c_start:c_end] = sub_mask.astype(np.float32)
-
-            if env.macro_board[m] == current_player:
-                macro_me_map[r_start:r_end, c_start:c_end] = 1.0
-
-            elif env.macro_board[m] == -current_player:
-                macro_opp_map[r_start:r_end, c_start:c_end] = 1.0
-
-        feature_tensor = np.stack(
-            [
-                p1_map,
-                p2_map,
-                mask_map,
-                macro_me_map,
-                macro_opp_map
-            ],
-            axis=0
-        )
-
-        return torch.tensor(
-            feature_tensor,
-            dtype=torch.float32
-        ).unsqueeze(0)
+        state = FastBoard.from_env(env)
+        legal_actions = np.flatnonzero(legal_masks).astype(int).tolist()
+        return self._fast_state_to_tensor(state, legal_actions)

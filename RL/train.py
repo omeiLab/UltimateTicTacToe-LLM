@@ -516,7 +516,7 @@ class OldCheckpointPoolAgent:
 
         for path in checkpoint_paths:
             if not os.path.exists(path):
-                print(f"⚠️ Old checkpoint 不存在，跳過: {path}")
+                print(f"Old checkpoint 不存在，跳過: {path}")
                 continue
 
             model = UTTTNet(
@@ -536,7 +536,7 @@ class OldCheckpointPoolAgent:
             self.models.append(model)
             self.names.append(path)
 
-            print(f"✅ 載入 old checkpoint opponent: {path}")
+            print(f"載入 old checkpoint opponent: {path}")
 
     def has_models(self):
         return len(self.models) > 0
@@ -803,7 +803,7 @@ def execute_old_checkpoint_episode(model, rl_agent, old_checkpoint_agent):
 
 
 def main():
-    print(f"📡 訓練硬體: {DEVICE}")
+    print(f"訓練硬體: {DEVICE}")
 
     if torch.cuda.is_available():
         print(f"顯卡型號: {torch.cuda.get_device_name(0)}")
@@ -846,13 +846,13 @@ def main():
         model.load_state_dict(state_dict)
 
         print(
-            f"✅ 已從 {RESUME_PATH} 載入模型，"
+            f"已從 {RESUME_PATH} 載入模型，"
             f"準備從 iter {START_ITER} 接續訓練。"
         )
 
     else:
         raise FileNotFoundError(
-            f"❌ 找不到 RESUME_PATH: {RESUME_PATH}，"
+            f"找不到 RESUME_PATH: {RESUME_PATH}，"
             f"請確認 checkpoint 是否存在。"
         )
 
@@ -916,13 +916,13 @@ def main():
         old_pool_available = old_checkpoint_agent.has_models()
 
     if old_pool_available:
-        print("✅ Old checkpoint pool 可用。")
+        print("Old checkpoint pool 可用。")
     else:
-        print("⚠️ Old checkpoint pool 沒有可用模型。")
-        print("⚠️ Old checkpoint 對戰場次會自動改成 self-play。")
+        print("Old checkpoint pool 沒有可用模型。")
+        print("Old checkpoint 對戰場次會自動改成 self-play。")
 
     print(
-        f"\n🚀 從 iter {START_ITER} 開始訓練："
+        f"\n從 iter {START_ITER} 開始訓練："
         f"{NUM_SELF_PLAY_EPISODES} self-play + "
         f"{NUM_MINIMAX_EPISODES} minimax + "
         f"{NUM_OLD_CHECKPOINT_EPISODES} old-checkpoint\n"
@@ -1048,7 +1048,7 @@ def main():
         )
 
         print(
-            f"🔥 開始訓練網路，"
+            f"開始訓練網路，"
             f"資料集大小: {len(dataset)}，"
             f"本輪新增資料: {new_data_count}"
         )
@@ -1129,7 +1129,7 @@ def main():
             checkpoint_path
         )
 
-        print(f"💾 權重已儲存至: {checkpoint_path}")
+        print(f"權重已儲存至: {checkpoint_path}")
 
     torch.save(
         model.state_dict(),
@@ -1137,7 +1137,7 @@ def main():
     )
 
     print(
-        f"\n🎉 iter{START_ITER}~iter{NUM_ITERATIONS} 訓練完成！"
+        f"\niter{START_ITER}~iter{NUM_ITERATIONS} 訓練完成！"
         f"最終權重已儲存為 best_uttt_model.pth"
     )
 

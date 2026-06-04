@@ -31,8 +31,8 @@ class AgentPool:
         self._pool["mcts_O"] = MCTSAdapter(exe_name="mcts_o_bin", model_player="O")
 
         # RL
-        self._pool["rl_X"] = RLAdapter(model_id=170, num_simulations=120, model_player="X")
-        self._pool["rl_O"] = RLAdapter(model_id=170, num_simulations=120, model_player="O")
+        self._pool["rl_X"] = RLAdapter(model_id=170, num_simulations=1000, model_player="X")
+        self._pool["rl_O"] = RLAdapter(model_id=170, num_simulations=1000, model_player="O")
         
         print("[AgentPool] Initialization complete. Agents available:", list(self._pool.keys()))
 
@@ -66,7 +66,6 @@ class AgentPool:
         return ArenaAgent(agent_instance=raw_brain, name=role_name)
 
     def prepare_for_new_game(self):
-        # Reset agents if they have a reset method (like MinimaxAdapter)
         for key in ["minimax_X", "minimax_O", "mcts_X", "mcts_O", "rl_X", "rl_O"]:
             agent = self._pool.get(key)
             if agent and hasattr(agent, "reset_agent"):

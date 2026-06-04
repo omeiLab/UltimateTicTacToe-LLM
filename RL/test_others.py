@@ -39,10 +39,10 @@ class RLAgent:
 
                 self.model.load_state_dict(state_dict)
 
-                print(f"✅ 成功載入 RL 權重: {model_path}")
+                print(f"成功載入 RL 權重: {model_path}")
 
             except RuntimeError as e:
-                print("\n❌ 權重載入失敗！")
+                print("\n權重載入失敗！")
                 print(f"檔案路徑: {model_path}")
                 print("\n常見原因：")
                 print("1. 你把 UTTTNet input channel 從 3 改成 5")
@@ -55,7 +55,7 @@ class RLAgent:
                 raise e
 
         else:
-            print(f"⚠️ 找不到權重檔案 {model_path}，將使用隨機初始化模型進行測試。")
+            print(f"找不到權重檔案 {model_path}，將使用隨機初始化模型進行測試。")
 
         self.model.eval()
 
@@ -115,7 +115,7 @@ def play_match(agent_o, agent_x, render_game=False):
             _, reward, terminated, info = env.step(action)
 
         except ValueError as e:
-            print("\n❌ Agent 產生非法走法！")
+            print("\nAgent 產生非法走法！")
             print(f"目前玩家: {current_player}")
             print(f"非法 action: {action}")
             print("目前棋盤：")
@@ -241,7 +241,7 @@ def run_arena_series(
     med_lat_1 = np.median(agent_1_all_latencies) if agent_1_all_latencies else 0.0
     med_lat_2 = np.median(agent_2_all_latencies) if agent_2_all_latencies else 0.0
 
-    print("\n📊 ====== Arena Metrics Report ======")
+    print("\n====== Arena Metrics Report ======")
     print(f"對戰組合: {name_1} vs {name_2}")
     print("--------------------------------------")
 
@@ -287,7 +287,7 @@ def run_arena_series(
 
 
 if __name__ == "__main__":
-    print(f"📡 測試硬體: {DEVICE}")
+    print(f"測試硬體: {DEVICE}")
 
     if torch.cuda.is_available():
         print(f"顯卡型號: {torch.cuda.get_device_name(0)}")
